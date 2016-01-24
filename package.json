@@ -1,0 +1,37 @@
+{
+  "name": "@tradle/ws-relay",
+  "version": "1.0.0",
+  "description": "tradle websockets relay",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tradle/ws-relay"
+  },
+  "keywords": [
+    "tradle",
+    "websockets",
+    "relay"
+  ],
+  "author": "Mark Vayngrib <mark.vayngrib@lablz.com> (http://github.com/mvayngrib)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tradle/ws-relay/issues"
+  },
+  "homepage": "https://github.com/tradle/ws-relay",
+  "dependencies": {
+    "@tradle/constants": "^1.1.7",
+    "debug": "^2.2.0",
+    "q": "^1.4.1",
+    "socket.io": "^1.4.4",
+    "typeforce": "^1.6.1"
+  },
+  "devDependencies": {
+    "@tradle/otr": "^0.2.15",
+    "@tradle/utils": "^1.0.0",
+    "@tradle/ws-client": "^1.0.0",
+    "tape": "^4.4.0"
+  }
+}
