@@ -70,15 +70,6 @@ function Server (opts) {
       var rh = socket._tradleRootHash
       if (rh) delete self._socketsByRootHash[rh]
     })
-
-    // socket.once('join', function (data) {
-    //   clientRootHash = data[ROOT_HASH]
-    //   debug('initiating handshake with', clientRootHash)
-    //   return self._handshake(socket, clientRootHash)
-    //     .catch(function (err) {
-    //       socket.disconnect()
-    //     })
-    // })
   })
 }
 
@@ -214,8 +205,9 @@ Server.prototype._forwardMessage = function (msgInfo) {
     }, msgInfo.callback)
   }
 
-  var queue = this._queues[to] = this._queues[to] || []
-  queue.push(msgInfo)
+  if (msgInfo.callback) {
+    msgInfo.callback({ error: { message: 'Recipient not found' } })
+  }
 }
 
 Server.prototype.destroy = function () {
