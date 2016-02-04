@@ -210,6 +210,10 @@ Server.prototype._forwardMessage = function (msgInfo) {
   }
 }
 
+Server.prototype.hasClient = function (rootHash) {
+  return rootHash in this._socketsByRootHash
+}
+
 Server.prototype.destroy = function () {
   if (this._destroyed) return Q.reject(new Error('already destroyed'))
 
