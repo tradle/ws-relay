@@ -31,50 +31,65 @@ function Server (opts) {
 
   this._server.listen(opts.port)
   this._io = io(this._server, { path: opts.path || '/' }) //.of('/' + opts.rootHash)
-  this._io.on('connection', function (socket) {
-    var clientRootHash
-    socket.on('error', function (err) {
-      debug('socket for client', clientRootHash, 'experienced error', err)
-      socket.disconnect()
-    })
-
-    // TODO: handshake before allowing them to subscribe
-    socket.once('subscribe', function (rootHash) {
-      clientRootHash = rootHash
-      self.emit('connect', clientRootHash)
-
-      self._socketsByRootHash[clientRootHash] = socket
-      socket._tradleRootHash = clientRootHash
-      socket.on('message', function (msg, cb) {
-        try {
-          typeforce({
-            to: 'String',
-            message: 'String'
-          }, msg)
-        } catch (err) {
-          debug('received invalid message from', clientRootHash, err)
-          return socket.emit('error', { message: 'invalid message', data: msg })
-        }
-
-        msg.from = clientRootHash
-        msg.callback = cb
-        self._forwardMessage(msg)
-      })
-    })
-
-    socket.once('disconnect', function () {
-      if (clientRootHash) {
-        self.emit('disconnect', clientRootHash)
-      }
-
-      var rh = socket._tradleRootHash
-      if (rh) delete self._socketsByRootHash[rh]
-    })
-  })
+  this._io.on('connection', this._onconnection.bind(this))
 }
 
 util.inherits(Server, EventEmitter)
 module.exports = Server
+
+Server.prototype._onconnection = function (socket) {
+  var self = this
+  var clientRootHash
+  socket.on('error', function (err) {
+    debug('disconnecting, socket for client ' + clientRootHash + ' experienced an error', err)
+    socket.disconnect()
+  })
+
+  // TODO: handshake before allowing them to subscribe
+  socket.once('subscribe', function (rootHash) {
+    debug('got "subscribe" from ' + rootHash)
+    var existing = self._socketsByRootHash[rootHash]
+    if (existing) {
+      if (existing !== socket) {
+        debug('disconnecting second socket for ' + rootHash)
+        socket.disconnect()
+      }
+
+      return
+    }
+
+    clientRootHash = rootHash
+    self.emit('connect', clientRootHash)
+
+    self._socketsByRootHash[clientRootHash] = socket
+    socket._tradleRootHash = clientRootHash
+    socket.on('message', function (msg, cb) {
+      debug('got message from ' + clientRootHash)
+
+      try {
+        typeforce({
+          to: 'String',
+          message: 'String'
+        }, msg)
+      } catch (err) {
+        debug('received invalid message from', clientRootHash, err)
+        return socket.emit('error', { message: 'invalid message', data: msg })
+      }
+
+      msg.from = clientRootHash
+      msg.callback = cb
+      self._forwardMessage(msg)
+    })
+  })
+
+  socket.once('disconnect', function () {
+    if (!clientRootHash) return
+
+    debug(clientRootHash + ' disconnected')
+    self.emit('disconnect', clientRootHash)
+    delete self._socketsByRootHash[clientRootHash]
+  })
+}
 
 // Server.prototype._handshake = function (socket, rootHash) {
 //   var self = this
