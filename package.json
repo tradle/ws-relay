@@ -1,6 +1,6 @@
 {
   "name": "@tradle/ws-relay",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "tradle websockets relay",
   "main": "index.js",
   "scripts": {
