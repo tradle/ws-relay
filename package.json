@@ -30,8 +30,8 @@
   },
   "devDependencies": {
     "@tradle/otr": "^0.2.15",
-    "@tradle/utils": "^1.0.0",
-    "@tradle/ws-client": "^1.0.0",
+    "@tradle/utils": "^1.2.5",
+    "@tradle/ws-client": "^1.2.0",
     "tape": "^4.4.0"
   }
 }

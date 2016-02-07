@@ -13,8 +13,9 @@ function Server (opts) {
   var self = this
 
   typeforce({
-    port: 'Number',
+    port: '?Number',
     path: '?String',
+    server: '?Object'
     // byRootHash: 'Function'
   }, opts)
 
@@ -24,12 +25,19 @@ function Server (opts) {
   this._pendingHandshakes = {}
   this._socketsByRootHash = {}
   // this._lookup = opts.byRootHash
-  this._server = http.createServer(function (req, res) {
-    res.writeHead(500)
-    res.end('This is a websockets endpoint!')
-  })
 
-  this._server.listen(opts.port)
+  this._server = opts.server
+  if (!this._server) {
+    if (!opts.port) throw new Error('expected "server" or "port"')
+
+    this._server = http.createServer(function (req, res) {
+      res.writeHead(500)
+      res.end('This is a websockets endpoint!')
+    })
+
+    this._server.listen(opts.port)
+  }
+
   this._io = io(this._server, { path: opts.path || '/' }) //.of('/' + opts.rootHash)
   this._io.on('connection', this._onconnection.bind(this))
 }

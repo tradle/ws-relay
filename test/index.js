@@ -1,5 +1,6 @@
 
 var path = require('path')
+var http = require('http')
 var test = require('tape')
 var Q = require('q')
 var ROOT_HASH = require('@tradle/constants').ROOT_HASH
@@ -53,8 +54,14 @@ test('websockets with relay', function (t) {
   var port = BASE_PORT++
 
   var relayPath = '/custom/relay/path'
+  var server = http.createServer(function (req, res) {
+    res.writeHead(500)
+    res.end('This is a websockets endpoint!')
+  })
+
+  server.listen(port)
   var relay = new WebSocketRelay({
-    port: port,
+    server: server,
     path: relayPath
   })
 
