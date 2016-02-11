@@ -16,16 +16,13 @@ function Server (opts) {
     port: '?Number',
     path: '?String',
     server: '?Object'
-    // byRootHash: 'Function'
   }, opts)
 
   EventEmitter.call(this)
 
   this._queues = {}
   this._pendingHandshakes = {}
-  this._socketsByRootHash = {}
-  // this._lookup = opts.byRootHash
-
+  this._socketsByFingerprint = {}
   this._server = opts.server
   if (!this._server) {
     if (!opts.port) throw new Error('expected "server" or "port"')
@@ -47,32 +44,32 @@ module.exports = Server
 
 Server.prototype._onconnection = function (socket) {
   var self = this
-  var clientRootHash
+  var clientOTRFingerprint
   socket.on('error', function (err) {
-    debug('disconnecting, socket for client ' + clientRootHash + ' experienced an error', err)
+    debug('disconnecting, socket for client ' + clientOTRFingerprint + ' experienced an error', err)
     socket.disconnect()
   })
 
   // TODO: handshake before allowing them to subscribe
-  socket.once('subscribe', function (rootHash) {
-    debug('got "subscribe" from ' + rootHash)
-    var existing = self._socketsByRootHash[rootHash]
+  socket.once('subscribe', function (otrFingerprint) {
+    debug('got "subscribe" from ' + otrFingerprint)
+    var existing = self._socketsByFingerprint[otrFingerprint]
     if (existing) {
       if (existing !== socket) {
-        debug('disconnecting second socket for ' + rootHash)
+        debug('disconnecting second socket for ' + otrFingerprint)
         socket.disconnect()
       }
 
       return
     }
 
-    clientRootHash = rootHash
-    self.emit('connect', clientRootHash)
+    clientOTRFingerprint = otrFingerprint
+    self.emit('connect', clientOTRFingerprint)
 
-    self._socketsByRootHash[clientRootHash] = socket
-    socket._tradleRootHash = clientRootHash
+    self._socketsByFingerprint[clientOTRFingerprint] = socket
+    socket._theirOTRFingerprint = clientOTRFingerprint
     socket.on('message', function (msg, cb) {
-      debug('got message from ' + clientRootHash)
+      debug('got message from ' + clientOTRFingerprint)
 
       try {
         typeforce({
@@ -80,22 +77,22 @@ Server.prototype._onconnection = function (socket) {
           message: 'String'
         }, msg)
       } catch (err) {
-        debug('received invalid message from', clientRootHash, err)
+        debug('received invalid message from', clientOTRFingerprint, err)
         return socket.emit('error', { message: 'invalid message', data: msg })
       }
 
-      msg.from = clientRootHash
+      msg.from = clientOTRFingerprint
       msg.callback = cb
       self._forwardMessage(msg)
     })
   })
 
   socket.once('disconnect', function () {
-    if (!clientRootHash) return
+    if (!clientOTRFingerprint) return
 
-    debug(clientRootHash + ' disconnected')
-    self.emit('disconnect', clientRootHash)
-    delete self._socketsByRootHash[clientRootHash]
+    debug(clientOTRFingerprint + ' disconnected')
+    self.emit('disconnect', clientOTRFingerprint)
+    delete self._socketsByFingerprint[clientOTRFingerprint]
   })
 }
 
@@ -183,7 +180,7 @@ Server.prototype._onconnection = function (socket) {
 // Server.prototype._addSocket = function (rootHash, socket) {
 //   var self = this
 //   delete this._pendingHandshakes[rootHash]
-//   this._socketsByRootHash[rootHash] = socket
+//   this._socketsByFingerprint[rootHash] = socket
 //   socket.join(rootHash)
 //   socket.emit('welcome')
 //   socket.on('message', function (msg, cb) {
@@ -208,7 +205,7 @@ Server.prototype._onconnection = function (socket) {
 // }
 
 Server.prototype.getConnectedClients = function () {
-  return Object.keys(this._socketsByRootHash)
+  return Object.keys(this._socketsByFingerprint)
 }
 
 Server.prototype._forwardMessage = function (msgInfo) {
@@ -220,7 +217,7 @@ Server.prototype._forwardMessage = function (msgInfo) {
   }, msgInfo)
 
   var to = msgInfo.to
-  var socket = this._socketsByRootHash[to]
+  var socket = this._socketsByFingerprint[to]
   if (socket) {
     return socket.emit('message', {
       from: msgInfo.from,
@@ -233,8 +230,8 @@ Server.prototype._forwardMessage = function (msgInfo) {
   }
 }
 
-Server.prototype.hasClient = function (rootHash) {
-  return rootHash in this._socketsByRootHash
+Server.prototype.hasClient = function (fingerprint) {
+  return fingerprint in this._socketsByFingerprint
 }
 
 Server.prototype.destroy = function () {
@@ -243,13 +240,13 @@ Server.prototype.destroy = function () {
   this._destroyed = true
   debug('destroying')
 
-  for (var rootHash in this._socketsByRootHash) {
-    var s = this._socketsByRootHash[rootHash]
+  for (var fingerprint in this._socketsByFingerprint) {
+    var s = this._socketsByFingerprint[fingerprint]
     s.disconnect()
     // s.removeAllListeners()
   }
 
-  delete this._socketsByRootHash
+  delete this._socketsByFingerprint
   this._io.close()
   this._server.close()
   return Q()
